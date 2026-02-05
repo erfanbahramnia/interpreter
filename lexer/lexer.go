@@ -1,6 +1,9 @@
 package lexer
 
-import "interpreter/token"
+import (
+	"fmt"
+	"interpreter/token"
+)
 
 type Lexer struct {
 	input        string
@@ -15,8 +18,11 @@ func NewLexer(input string) *Lexer {
 	return l
 }
 
+// this methods help to identify the value and type of token
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
+
+	l.skipWhitespace()
 
 	switch l.currentChar {
 	case '=':
@@ -38,12 +44,27 @@ func (l *Lexer) NextToken() token.Token {
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
+	default:
+		if isLetter(l.currentChar) {
+			// get keyword or identifier
+			tok.Literal = l.readIdentifier()
+			fmt.Println(tok.Literal)
+			// check token is keyword or identifier
+			tok.Type = token.LookupIdent(tok.Literal)
+			return tok
+		} else if isDigit(l.currentChar) {
+			tok.Literal = l.readNumber()
+			tok.Type = token.INT
+			return tok
+		}
+		tok = newToken(token.ILLEGAL, l.currentChar)
 	}
 
 	l.readChar()
 	return tok
 }
 
+// this method helps to move char by char
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.currentChar = 0 // ASCII, 0 => NULL
@@ -54,6 +75,27 @@ func (l *Lexer) readChar() {
 	l.readPosition++
 }
 
-func newToken(tokenType token.TokenType, cu byte) token.Token {
-	return token.Token{Type: tokenType, Literal: string(cu)}
+// this method helps to read number corectly without break it
+func (l *Lexer) readNumber() string {
+	position := l.position
+	for isDigit(l.currentChar) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+// this method help to get word instead of char
+func (l *Lexer) readIdentifier() string {
+	position := l.position
+	for isLetter(l.currentChar) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+// remove all space (include: /n. /r, /t)
+func (l *Lexer) skipWhitespace() {
+	for l.currentChar == ' ' || l.currentChar == '\n' || l.currentChar == '\r' || l.currentChar == '\t' {
+		l.readChar()
+	}
 }
